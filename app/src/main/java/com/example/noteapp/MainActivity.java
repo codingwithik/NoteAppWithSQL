@@ -1,53 +1,52 @@
 package com.example.noteapp;
 
+import android.app.LoaderManager;
+import android.content.CursorLoader;
 import android.content.Intent;
+import android.content.Loader;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
-import android.support.v4.app.LoaderManager;
-import android.support.v4.content.CursorLoader;
-import android.support.v4.content.Loader;
-import android.support.v7.widget.GridLayoutManager;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
+
 import android.view.View;
-import android.support.design.widget.NavigationView;
-import android.support.v4.view.GravityCompat;
-import android.support.v4.widget.DrawerLayout;
-import android.support.v7.app.ActionBarDrawerToggle;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
+
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
 
-import com.example.noteapp.NoteKeeperDatabaseContract.CourseInfoEntry;
-import com.example.noteapp.NoteKeeperDatabaseContract.NoteInfoEntry;
+
+import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.navigation.NavigationView;
+import com.google.android.material.snackbar.Snackbar;
 
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener,
         LoaderManager.LoaderCallbacks<Cursor> {
-
-    public static final int LOADER_NOTES = 1;
+    public static final int LOADER_NOTES = 0;
+    private NoteRecyclerAdapter mNoteRecyclerAdapter;
     private RecyclerView mRecyclerItems;
     private LinearLayoutManager mNotesLayoutManager;
-    private GridLayoutManager mCoursesLayoutManager;
     private CourseRecyclerAdapter mCourseRecyclerAdapter;
-    private NoteRecyclerAdapter noteRecyclerAdapter;
+    private GridLayoutManager mCoursesLayoutManager;
     private NoteKeeperOpenHelper mDbOpenHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main2);
+        setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
@@ -57,19 +56,18 @@ public class MainActivity extends AppCompatActivity
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+                startActivity(new Intent(MainActivity.this, NoteActivity.class));
             }
         });
 
         PreferenceManager.setDefaultValues(this, R.xml.pref_general, false);
-        PreferenceManager.setDefaultValues(this, R.xml.pref_notification, false);
+        PreferenceManager.setDefaultValues(this,  R.xml.pref_notification, false);
         PreferenceManager.setDefaultValues(this, R.xml.pref_data_sync, false);
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
-        drawer.addDrawerListener(toggle);
+        drawer.setDrawerListener(toggle);
         toggle.syncState();
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
@@ -87,88 +85,48 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onResume() {
         super.onResume();
-        //adapterNotes.notifyDataSetChanged();
-        //noteRecyclerAdapter.notifyDataSetChanged();
-        //loadNotes();
-        getLoaderManager().restartLoader(LOADER_NOTES, null, (android.app.LoaderManager.LoaderCallbacks<Object>) this);
+
+        getLoaderManager().restartLoader(LOADER_NOTES, null, this);
+
         updateNavHeader();
     }
 
     private void loadNotes() {
         SQLiteDatabase db = mDbOpenHelper.getReadableDatabase();
-
         final String[] noteColumns = {
-                NoteInfoEntry.COLUMN_NOTE_TITLE,
-                NoteInfoEntry.COLUMN_COURSE_ID,
-                NoteInfoEntry._ID
-        };
+                NoteKeeperDatabaseContract.NoteInfoEntry.COLUMN_NOTE_TITLE,
+                NoteKeeperDatabaseContract.NoteInfoEntry.COLUMN_COURSE_ID,
+                NoteKeeperDatabaseContract.NoteInfoEntry._ID};
 
-        String noteOrderBy = NoteInfoEntry.COLUMN_COURSE_ID + "," + NoteInfoEntry.COLUMN_NOTE_TITLE;
-
-        final Cursor noteCursor = db.query(NoteInfoEntry.TABLE_NAME, noteColumns,
+        String noteOrderBy = NoteKeeperDatabaseContract.NoteInfoEntry.COLUMN_COURSE_ID + "," + NoteKeeperDatabaseContract.NoteInfoEntry.COLUMN_NOTE_TITLE;
+        final Cursor noteCursor = db.query(NoteKeeperDatabaseContract.NoteInfoEntry.TABLE_NAME, noteColumns,
                 null, null, null, null, noteOrderBy);
-
-        noteRecyclerAdapter.changeCursor(noteCursor);
+        mNoteRecyclerAdapter.changeCursor(noteCursor);
     }
 
     private void updateNavHeader() {
-
-        NavigationView navigationView = findViewById(R.id.nav_view);
+        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         View headerView = navigationView.getHeaderView(0);
-
-        TextView txtUsername = headerView.findViewById(R.id.text_username);
-        TextView txtEmail = headerView.findViewById(R.id.text_email_address);
+        TextView textUserName = (TextView)headerView.findViewById(R.id.text_user_name);
+        TextView textEmailAddress = (TextView)headerView.findViewById(R.id.text_email_address);
 
         SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(this);
-        String username = pref.getString("user_display_name", "");
+        String userName = pref.getString("user_display_name", "");
         String emailAddress = pref.getString("user_email_address", "");
 
-        txtUsername.setText(username);
-        txtEmail.setText(emailAddress);
-    }
-
-
-    private void displayNotes() {
-        mRecyclerItems.setLayoutManager(mNotesLayoutManager);
-        mRecyclerItems.setAdapter(noteRecyclerAdapter);
-
-
-        selectNavigationMenuItem(R.id.nav_notes);
-    }
-
-    private void selectNavigationMenuItem(int id) {
-        NavigationView navigationView =  findViewById(R.id.nav_view);
-        Menu menu = navigationView.getMenu();
-        menu.findItem(id).setChecked(true);
+        textUserName.setText(userName);
+        textEmailAddress.setText(emailAddress);
     }
 
     private void initializeDisplayContent() {
-
-//        final ListView listView = findViewById(R.id.list_note);
-//
-//        List<NoteInfo> notes = DataManager.getInstance().getNotes();
-//        adapterNotes = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, notes);
-//
-//        listView.setAdapter(adapterNotes);
-//
-//        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-//            @Override
-//            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-//                Intent intent = new Intent(NoteListActivity.this, NoteActivity.class);
-//                //NoteInfo note = (NoteInfo) listView.getItemAtPosition(position);
-//                intent.putExtra(NoteActivity.NOTE_ID, position);
-//                startActivity(intent);
-//            }
-//        });
-
         DataManager.loadFromDatabase(mDbOpenHelper);
-
-        mRecyclerItems =   findViewById(R.id.list_items);
+        mRecyclerItems = (RecyclerView) findViewById(R.id.list_items);
         mNotesLayoutManager = new LinearLayoutManager(this);
-        //mCoursesLayoutManager = new GridLayoutManager(this, getResources().getInteger(R.integer.course_grid_span));
-        mCoursesLayoutManager = new GridLayoutManager(this, 2);
-        //List<NoteInfo> notes = DataManager.getInstance().getNotes();
-        noteRecyclerAdapter = new NoteRecyclerAdapter(this, null);
+        mCoursesLayoutManager = new GridLayoutManager(this,
+                getResources().getInteger(R.integer.course_grid_span));
+
+
+        mNoteRecyclerAdapter = new NoteRecyclerAdapter(this, null);
 
         List<CourseInfo> courses = DataManager.getInstance().getCourses();
         mCourseRecyclerAdapter = new CourseRecyclerAdapter(this, courses);
@@ -176,6 +134,25 @@ public class MainActivity extends AppCompatActivity
         displayNotes();
     }
 
+    private void displayNotes() {
+        mRecyclerItems.setLayoutManager(mNotesLayoutManager);
+        mRecyclerItems.setAdapter(mNoteRecyclerAdapter);
+
+        selectNavigationMenuItem(R.id.nav_notes);
+    }
+
+    private void selectNavigationMenuItem(int id) {
+        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+        Menu menu = navigationView.getMenu();
+        menu.findItem(id).setChecked(true);
+    }
+
+    private void displayCourses() {
+        mRecyclerItems.setLayoutManager(mCoursesLayoutManager);
+        mRecyclerItems.setAdapter(mCourseRecyclerAdapter);
+
+        selectNavigationMenuItem(R.id.nav_courses);
+    }
     @Override
     public void onBackPressed() {
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -189,7 +166,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.main2, menu);
+        getMenuInflater().inflate(R.menu.main, menu);
         return true;
     }
 
@@ -216,18 +193,14 @@ public class MainActivity extends AppCompatActivity
         int id = item.getItemId();
 
         if (id == R.id.nav_notes) {
-            // Handle the camera action
-        } else if (id == R.id.nav_gallery) {
-
-        } else if (id == R.id.nav_slideshow) {
-
-        } else if (id == R.id.nav_manage) {
-
+            displayNotes();
+        } else if (id == R.id.nav_courses) {
+            displayCourses();
         } else if (id == R.id.nav_share) {
-
+//            handleSelection(R.string.nav_share_message);
             handleShare();
         } else if (id == R.id.nav_send) {
-
+            handleSelection(R.string.nav_send_message);
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -236,58 +209,60 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void handleShare() {
-
+        View view = findViewById(R.id.list_items);
+        Snackbar.make(view, "Share to - " +
+                PreferenceManager.getDefaultSharedPreferences(this).getString("user_favorite_social", ""),
+                Snackbar.LENGTH_LONG).show();
     }
 
-    @NonNull
+    private void handleSelection(int message_id) {
+        View view = findViewById(R.id.list_items);
+        Snackbar.make(view, message_id, Snackbar.LENGTH_LONG).show();
+    }
+
     @Override
-    public Loader<Cursor> onCreateLoader(int i, @Nullable Bundle bundle) {
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
         CursorLoader loader = null;
-        if(i == LOADER_NOTES)
-            loader = createLoaderNotes();
-        return null;
-    }
+        if(id == LOADER_NOTES) {
+            loader = new CursorLoader(this) {
+                @Override
+                public Cursor loadInBackground() {
+                    SQLiteDatabase db = mDbOpenHelper.getReadableDatabase();
+                    final String[] noteColumns = {
+                            NoteKeeperDatabaseContract.NoteInfoEntry.getQName(NoteKeeperDatabaseContract.NoteInfoEntry._ID),
+                            NoteKeeperDatabaseContract.NoteInfoEntry.COLUMN_NOTE_TITLE,
+                            NoteKeeperDatabaseContract.CourseInfoEntry.COLUMN_COURSE_TITLE
+                    };
 
-    private CursorLoader createLoaderNotes() {
-        return new CursorLoader(this){
-            @Override
-            public Cursor loadInBackground() {
-                SQLiteDatabase db = mDbOpenHelper.getReadableDatabase();
+                    final String noteOrderBy = NoteKeeperDatabaseContract.CourseInfoEntry.COLUMN_COURSE_TITLE +
+                            "," + NoteKeeperDatabaseContract.NoteInfoEntry.COLUMN_NOTE_TITLE;
 
-                final String[] noteColumns = {
-                        NoteInfoEntry.getQName(NoteInfoEntry._ID),
-                        NoteInfoEntry.COLUMN_NOTE_TITLE,
-                        //NoteInfoEntry.getQName(NoteInfoEntry.COLUMN_COURSE_ID),
-                        CourseInfoEntry.COLUMN_COURSE_TITLE
-                };
+                    // note_info JOIN course_info ON note_info.course_id = course_info.course_id
+                    String tablesWithJoin = NoteKeeperDatabaseContract.NoteInfoEntry.TABLE_NAME + " JOIN " +
+                            NoteKeeperDatabaseContract.CourseInfoEntry.TABLE_NAME + " ON " +
+                            NoteKeeperDatabaseContract.NoteInfoEntry.getQName(NoteKeeperDatabaseContract.NoteInfoEntry.COLUMN_COURSE_ID) + " = " +
+                            NoteKeeperDatabaseContract.CourseInfoEntry.getQName( NoteKeeperDatabaseContract.CourseInfoEntry.COLUMN_COURSE_ID);
 
-                String noteOrderBy = CourseInfoEntry.COLUMN_COURSE_TITLE + "," + NoteInfoEntry.COLUMN_NOTE_TITLE;
-
-//                String tablesWithJoin = NoteInfoEntry.TABLE_NAME +" JOIN "+ CourseInfoEntry.TABLE_NAME +" ON"
-//                        + NoteInfoEntry.TABLE_NAME + "." + NoteInfoEntry.COLUMN_COURSE_ID + " = " + CourseInfoEntry.TABLE_NAME + " . "
-//                        + CourseInfoEntry.COLUMN_COURSE_ID;
-                String tablesWithJoin = NoteInfoEntry.TABLE_NAME +" JOIN "+ CourseInfoEntry.TABLE_NAME +" ON "
-                        + NoteInfoEntry.getQName( NoteInfoEntry.COLUMN_COURSE_ID) + " = "
-                        + CourseInfoEntry.getQName(CourseInfoEntry.COLUMN_COURSE_ID);
-
-                return db.query(tablesWithJoin, noteColumns,
-                        null, null, null, null, noteOrderBy);
-            }
-        };
+                    return db.query(tablesWithJoin, noteColumns,
+                            null, null, null, null, noteOrderBy);
+                }
+            };
+        }
+        return loader;
     }
 
     @Override
-    public void onLoadFinished(@NonNull Loader<Cursor> loader, Cursor cursor) {
-        if(loader.getId() == LOADER_NOTES){
-            noteRecyclerAdapter.changeCursor(cursor);
+    public void onLoadFinished(Loader loader, Cursor data) {
+        if(loader.getId() == LOADER_NOTES)  {
+            mNoteRecyclerAdapter.changeCursor(data);
         }
-
     }
 
     @Override
-    public void onLoaderReset(@NonNull Loader<Cursor> loader) {
-        if(loader.getId() == LOADER_NOTES){
-            noteRecyclerAdapter.changeCursor(null);
+    public void onLoaderReset(Loader loader) {
+        if(loader.getId() == LOADER_NOTES)  {
+            mNoteRecyclerAdapter.changeCursor(null);
         }
+
     }
 }

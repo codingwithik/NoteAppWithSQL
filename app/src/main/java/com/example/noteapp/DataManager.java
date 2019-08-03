@@ -3,14 +3,12 @@ package com.example.noteapp;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
-import com.example.noteapp.NoteKeeperDatabaseContract.CourseInfoEntry;
-import com.example.noteapp.NoteKeeperDatabaseContract.NoteInfoEntry;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by Jim.
+ * Created by Ik.
  */
 
 public class DataManager {
@@ -22,75 +20,66 @@ public class DataManager {
     public static DataManager getInstance() {
         if(ourInstance == null) {
             ourInstance = new DataManager();
-            //ourInstance.initializeCourses();
-            //ourInstance.initializeExampleNotes();
+//            ourInstance.initializeCourses();
+//            ourInstance.initializeExampleNotes();
         }
         return ourInstance;
     }
 
-    public static void loadFromDatabase(NoteKeeperOpenHelper dbHelper){
-
+    public static void loadFromDatabase(NoteKeeperOpenHelper dbHelper) {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
         final String[] courseColumns = {
-                CourseInfoEntry.COLUMN_COURSE_ID,
-                CourseInfoEntry.COLUMN_COURSE_TITLE};
-
-        final Cursor courseCursor = db.query(CourseInfoEntry.TABLE_NAME, courseColumns,
-                null, null, null, null, CourseInfoEntry.COLUMN_COURSE_TITLE + " DESC");
-
+                NoteKeeperDatabaseContract.CourseInfoEntry.COLUMN_COURSE_ID,
+                NoteKeeperDatabaseContract.CourseInfoEntry.COLUMN_COURSE_TITLE};
+        final Cursor courseCursor = db.query(NoteKeeperDatabaseContract.CourseInfoEntry.TABLE_NAME, courseColumns,
+                null, null, null, null, NoteKeeperDatabaseContract.CourseInfoEntry.COLUMN_COURSE_TITLE + " DESC");
         loadCoursesFromDatabase(courseCursor);
+
         final String[] noteColumns = {
-                NoteInfoEntry.COLUMN_NOTE_TITLE,
-                NoteInfoEntry.COLUMN_NOTE_TEXT,
-                NoteInfoEntry.COLUMN_COURSE_ID,
-                NoteInfoEntry._ID
-            };
-
-        String noteOrderBy = NoteInfoEntry.COLUMN_COURSE_ID + "," + NoteInfoEntry.COLUMN_NOTE_TITLE;
-
-        final Cursor noteCursor = db.query(NoteInfoEntry.TABLE_NAME, noteColumns,
+                NoteKeeperDatabaseContract.NoteInfoEntry.COLUMN_NOTE_TITLE,
+                NoteKeeperDatabaseContract.NoteInfoEntry.COLUMN_NOTE_TEXT,
+                NoteKeeperDatabaseContract.NoteInfoEntry.COLUMN_COURSE_ID,
+                NoteKeeperDatabaseContract.NoteInfoEntry._ID};
+        String noteOrderBy = NoteKeeperDatabaseContract.NoteInfoEntry.COLUMN_COURSE_ID + "," + NoteKeeperDatabaseContract.NoteInfoEntry.COLUMN_NOTE_TITLE;
+        final Cursor noteCursor = db.query(NoteKeeperDatabaseContract.NoteInfoEntry.TABLE_NAME, noteColumns,
                 null, null, null, null, noteOrderBy);
         loadNotesFromDatabase(noteCursor);
     }
 
     private static void loadNotesFromDatabase(Cursor cursor) {
+        int noteTitlePos = cursor.getColumnIndex(NoteKeeperDatabaseContract.NoteInfoEntry.COLUMN_NOTE_TITLE);
+        int noteTextPos = cursor.getColumnIndex(NoteKeeperDatabaseContract.NoteInfoEntry.COLUMN_NOTE_TEXT);
+        int courseIdPos = cursor.getColumnIndex(NoteKeeperDatabaseContract.NoteInfoEntry.COLUMN_COURSE_ID);
+        int idPos = cursor.getColumnIndex(NoteKeeperDatabaseContract.NoteInfoEntry._ID);
 
-        int courseIdPos = cursor.getColumnIndex(NoteInfoEntry.COLUMN_COURSE_ID);
-        int noteTitlePos = cursor.getColumnIndex(NoteInfoEntry.COLUMN_NOTE_TITLE);
-        int noteTextPos = cursor.getColumnIndex(NoteInfoEntry.COLUMN_NOTE_TEXT);
-        int idPos = cursor.getColumnIndex(NoteInfoEntry._ID);
         DataManager dm = getInstance();
         dm.mNotes.clear();
-
-        while (cursor.moveToNext()){
-            String courseId = cursor.getString(courseIdPos);
+        while(cursor.moveToNext()) {
             String noteTitle = cursor.getString(noteTitlePos);
             String noteText = cursor.getString(noteTextPos);
+            String courseId = cursor.getString(courseIdPos);
             int id = cursor.getInt(idPos);
 
             CourseInfo noteCourse = dm.getCourse(courseId);
             NoteInfo note = new NoteInfo(id, noteCourse, noteTitle, noteText);
             dm.mNotes.add(note);
         }
-
         cursor.close();
     }
 
     private static void loadCoursesFromDatabase(Cursor cursor) {
-
-        int courseIdPos = cursor.getColumnIndex(CourseInfoEntry.COLUMN_COURSE_ID);
-        int courseTitlePos = cursor.getColumnIndex(CourseInfoEntry.COLUMN_COURSE_TITLE);
+        int courseIdPos = cursor.getColumnIndex(NoteKeeperDatabaseContract.CourseInfoEntry.COLUMN_COURSE_ID);
+        int courseTitlePos = cursor.getColumnIndex(NoteKeeperDatabaseContract.CourseInfoEntry.COLUMN_COURSE_TITLE);
 
         DataManager dm = getInstance();
         dm.mCourses.clear();
-        while(cursor.moveToNext()){
+        while(cursor.moveToNext()) {
             String courseId = cursor.getString(courseIdPos);
             String courseTitle = cursor.getString(courseTitlePos);
             CourseInfo course = new CourseInfo(courseId, courseTitle, null);
 
             dm.mCourses.add(course);
         }
-
         cursor.close();
     }
 
@@ -107,7 +96,7 @@ public class DataManager {
     }
 
     public int createNewNote() {
-        NoteInfo note = new NoteInfo(1, null, null, null);
+        NoteInfo note = new NoteInfo(null, null, null);
         mNotes.add(note);
         return mNotes.size() - 1;
     }
@@ -174,17 +163,17 @@ public class DataManager {
         course.getModule("android_intents_m01").setComplete(true);
         course.getModule("android_intents_m02").setComplete(true);
         course.getModule("android_intents_m03").setComplete(true);
-        mNotes.add(new NoteInfo(1, course, "Dynamic intent resolution",
+        mNotes.add(new NoteInfo(course, "Dynamic intent resolution",
                 "Wow, intents allow components to be resolved at runtime"));
-        mNotes.add(new NoteInfo(2, course, "Delegating intents",
+        mNotes.add(new NoteInfo(course, "Delegating intents",
                 "PendingIntents are powerful; they delegate much more than just a component invocation"));
 
         course = dm.getCourse("android_async");
         course.getModule("android_async_m01").setComplete(true);
         course.getModule("android_async_m02").setComplete(true);
-        mNotes.add(new NoteInfo(3, course, "Service default threads",
+        mNotes.add(new NoteInfo(course, "Service default threads",
                 "Did you know that by default an Android Service will tie up the UI thread?"));
-        mNotes.add(new NoteInfo(4, course, "Long running operations",
+        mNotes.add(new NoteInfo(course, "Long running operations",
                 "Foreground Services can be tied to a notification icon"));
 
         course = dm.getCourse("java_lang");
@@ -195,18 +184,18 @@ public class DataManager {
         course.getModule("java_lang_m05").setComplete(true);
         course.getModule("java_lang_m06").setComplete(true);
         course.getModule("java_lang_m07").setComplete(true);
-        mNotes.add(new NoteInfo(5, course, "Parameters",
+        mNotes.add(new NoteInfo(course, "Parameters",
                 "Leverage variable-length parameter lists"));
-        mNotes.add(new NoteInfo(6, course, "Anonymous classes",
+        mNotes.add(new NoteInfo(course, "Anonymous classes",
                 "Anonymous classes simplify implementing one-use types"));
 
         course = dm.getCourse("java_core");
         course.getModule("java_core_m01").setComplete(true);
         course.getModule("java_core_m02").setComplete(true);
         course.getModule("java_core_m03").setComplete(true);
-        mNotes.add(new NoteInfo(7, course, "Compiler options",
+        mNotes.add(new NoteInfo(course, "Compiler options",
                 "The -jar option isn't compatible with with the -cp option"));
-        mNotes.add(new NoteInfo(8, course, "Serialization",
+        mNotes.add(new NoteInfo(course, "Serialization",
                 "Remember to include SerialVersionUID to assure version compatibility"));
     }
 
@@ -264,6 +253,16 @@ public class DataManager {
         modules.add(new ModuleInfo("java_core_m10", "Persisting Objects with Serialization"));
 
         return new CourseInfo("java_core", "Java Fundamentals: The Core Platform", modules);
+    }
+
+    public int createNewNote(CourseInfo course, String noteTitle, String noteText) {
+        int index = createNewNote();
+        NoteInfo note = getNotes().get(index);
+        note.setCourse(course);
+        note.setTitle(noteTitle);
+        note.setText(noteText);
+
+        return index;
     }
     //endregion
 
